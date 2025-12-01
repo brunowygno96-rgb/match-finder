@@ -148,56 +148,75 @@ def home():
       </div>
 
       <script>
-        const baseUrl = "";
+     const baseUrl = "";
 
-        document.getElementById("nextForm").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const team = document.getElementById("team").value.trim();
-          const team_id = document.getElementById("team_id").value.trim();
-          const team_url = document.getElementById("team_url").value.trim();
-          const nextVal = document.getElementById("next").value.trim() || "3";
-          const tz = document.getElementById("tz").value.trim() || "America/Fortaleza";
+     async function callApi(url, outputElementId) {
+       const out = document.getElementById(outputElementId);
+       out.textContent = "Carregando...";
 
-          const params = new URLSearchParams();
-          if (team) params.append("team", team);
-          if (team_id) params.append("team_id", team_id);
-          if (team_url) params.append("team_url", team_url);
-          params.append("next", nextVal);
-          params.append("tz", tz);
+       try {
+         const res = await fetch(url);
+         const text = await res.text();   // lê texto bruto
 
-          const url = baseUrl + "/next?" + params.toString();
-          const resEl = document.getElementById("nextResult");
-          resEl.textContent = "Carregando...";
-          try {
-            const resp = await fetch(url);
-            const data = await resp.json();
-            resEl.textContent = JSON.stringify(data, null, 2);
-          } catch (err) {
-            resEl.textContent = "Erro: " + err;
-          }
-        });
+         if (!res.ok) {
+           // Mostra o erro HTTP em vez de tentar fazer JSON.parse
+           out.textContent = `Erro HTTP ${res.status}: ${text}`;
+           return;
+         }
 
-        document.getElementById("multiForm").addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const nextPerTeam = document.getElementById("next_per_team").value.trim() || "2";
-          const tzMulti = document.getElementById("tz_multi").value.trim() || "America/Fortaleza";
+         let data;
+         try {
+           data = JSON.parse(text);
+         } catch (e) {
+           out.textContent =
+             "Erro ao ler JSON de resposta: " +
+             e +
+             "\n\nTexto bruto recebido:\n" +
+             text;
+           return;
+         }
 
-          const params = new URLSearchParams();
-          params.append("next_per_team", nextPerTeam);
-          params.append("tz", tzMulti);
+         out.textContent = JSON.stringify(data, null, 2);
+       } catch (err) {
+         out.textContent = "Erro ao chamar API: " + err;
+       }
+     }
 
-          const url = baseUrl + "/multi?" + params.toString();
-          const resEl = document.getElementById("multiResult");
-          resEl.textContent = "Carregando...";
-          try {
-            const resp = await fetch(url);
-            const data = await resp.json();
-            resEl.textContent = JSON.stringify(data, null, 2);
-          } catch (err) {
-            resEl.textContent = "Erro: " + err;
-          }
-        });
-      </script>
+     document.getElementById("nextForm").addEventListener("submit", async (e) => {
+       e.preventDefault();
+       const team = document.getElementById("team").value.trim();
+       const team_id = document.getElementById("team_id").value.trim();
+       const team_url = document.getElementById("team_url").value.trim();
+       const nextVal = document.getElementById("next").value.trim() || "3";
+       const tz = document.getElementById("tz").value.trim() || "America/Fortaleza";
+
+       const params = new URLSearchParams();
+       if (team) params.append("team", team);
+       if (team_id) params.append("team_id", team_id);
+       if (team_url) params.append("team_url", team_url);
+       params.append("next", nextVal);
+       params.append("tz", tz);
+
+       const url = baseUrl + "/next?" + params.toString();
+       callApi(url, "nextResult");
+     });
+
+     document.getElementById("multiForm").addEventListener("submit", async (e) => {
+       e.preventDefault();
+       const nextPerTeam =
+         document.getElementById("next_per_team").value.trim() || "2";
+       const tzMulti =
+         document.getElementById("tz_multi").value.trim() || "America/Fortaleza";
+
+       const params = new URLSearchParams();
+       params.append("next_per_team", nextPerTeam);
+       params.append("tz", tzMulti);
+
+       const url = baseUrl + "/multi?" + params.toString();
+       callApi(url, "multiResult");
+     });
+</script>
+
     </body>
     </html>
     """
