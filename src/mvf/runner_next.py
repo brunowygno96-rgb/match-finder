@@ -2,7 +2,7 @@
 from __future__ import annotations
 import argparse, json
 from .providers.sofascore import search_team_id, team_id_from_url
-from .providers.browser_events import fetch_next_events
+from .providers.http_events import fetch_next_events
 from .utils import to_local, now_utc
 from .teams_db import find_team_id as db_find_team_id, ensure_team as db_ensure_team
 
