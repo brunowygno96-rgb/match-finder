@@ -1,63 +1,85 @@
-
 from __future__ import annotations
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pathlib import Path
 from collections import defaultdict
+import json
 
 from .runner_next import run_next
-from .providers.sofascore import team_id_from_url, search_team_id
-from .teams_db import find_team_id as db_find_team_id
 
 ATHLETES_PATH = Path("config/athletes.json")
 
-def load_athletes() -> List[Dict[str, Any]]:
-    if ATHLETES_PATH.exists():
-        try:
-            import json
-            return json.loads(ATHLETES_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            pass
-    return [
-        {"name": "Atleta A", "team_id": 306038, "team_label": "Cartagena FS"},
-        {"name": "Atleta B", "team_id": 306038, "team_label": "Cartagena FS"}
-    ]
 
-def _resolve_team_id(entry: Dict[str, Any]) -> Optional[int]:
-    if entry.get("team_id"):
-        return int(entry["team_id"])
-    if entry.get("team_url"):
-        tid = team_id_from_url(entry["team_url"])
-        if tid:
-            return tid
-    if entry.get("team_name"):
-        tid = db_find_team_id(entry["team_name"])
-        if tid:
-            return tid
-        return search_team_id(entry["team_name"])
-    return None
+def load_athletes() -> List[Dict[str, Any]]:
+    """
+    Lê config/athletes.json.
+    Estrutura esperada:
+    [
+      {
+        "name": "Nome do atleta",
+        "team_label": "Nome do time",
+        "team_id": 123456,
+        "team_url": "https://www.sofascore.com/..."
+      },
+      ...
+    ]
+    """
+    if not ATHLETES_PATH.exists():
+        return []
+
+    try:
+        with ATHLETES_PATH.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data
+    except Exception:
+        pass
+
+    return []
+
 
 def run_multi(next_per_team: int = 2, tz: str = "America/Fortaleza") -> Dict[str, Any]:
+    """
+    Monta uma agenda agrupada por dia para todos os atletas do arquivo athletes.json.
+    Usa a função run_next para cada atleta/time.
+    """
     athletes = load_athletes()
     agenda = defaultdict(list)
 
-    for ent in athletes:
-        name = ent.get("name") or "Sem nome"
-        team_id = _resolve_team_id(ent)
-        label = ent.get("team_label") or ent.get("team_name") or (f"sofascore:{team_id}" if team_id else "")
-        if not team_id:
+    for entry in athletes:
+        name = entry.get("name") or ""
+        label = entry.get("team_label") or entry.get("team") or ""
+        team_id = entry.get("team_id")
+        team_url = entry.get("team_url")
+
+        if not (team_id or team_url or label):
             continue
 
-        result = run_next(team=None, limit=next_per_team, tz=tz, team_id=team_id, team_url=None)
+        result = run_next(
+            team=label,
+            limit=next_per_team,
+            tz=tz,
+            team_id=team_id,
+            team_url=team_url,
+            debug=False,
+        )
+
+        if not result.get("ok"):
+            # se deu erro pra esse atleta, ignora (ou poderia logar)
+            continue
+
         for m in result.get("upcoming", []):
-            date_key = m["date_local"]
+            date_key = m.get("date_local")
+            if not date_key:
+                continue
+
             line = {
                 "athlete": name,
                 "team_label": label,
-                "tournament": m.get("tournament",""),
-                "time_local": m.get("time_local",""),
-                "date_local": m.get("date_local",""),
-                "event_url": m.get("event_url",""),
-                "vs": f"{m.get('home','')} x {m.get('away','')}",
+                "tournament": m.get("tournament", ""),
+                "time_local": m.get("time_local", ""),
+                "date_local": m.get("date_local", ""),
+                "event_url": m.get("event_url", ""),
+                "vs": f"{m.get('home', '')} x {m.get('away', '')}",
             }
             agenda[date_key].append(line)
 
