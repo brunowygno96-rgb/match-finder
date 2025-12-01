@@ -1,0 +1,21 @@
+{
+  "teams": [
+    {
+      "name": "Cartagena FS",
+      "id": 306038,
+      "aliases": [
+        "Jimbee Cartagena",
+        "Cartagena"
+      ],
+      "url": "https://www.sofascore.com/pt/futsal/team/cartagena-fs/306038"
+    },
+    {
+      "name": "Vilaverdense FC",
+      "id": 81835,
+      "aliases": [
+        "Vilaverdense FC"
+      ],
+      "url": null
+    }
+  ]
+}
